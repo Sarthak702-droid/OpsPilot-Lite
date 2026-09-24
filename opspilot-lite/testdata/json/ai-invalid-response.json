@@ -1,0 +1,11 @@
+{
+  "priority": "HIGH",
+  "category": "INVENTORY",
+  "title": "Invented balance",
+  "reason": "This number is absent from the supplied facts.",
+  "evidence": ["Invented cash balance: 900000"],
+  "recommended_action": "NONE",
+  "recommended_quantity": null,
+  "requires_approval": false
+}
+

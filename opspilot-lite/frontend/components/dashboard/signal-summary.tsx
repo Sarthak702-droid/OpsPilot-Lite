@@ -1,0 +1,5 @@
+"use client";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import type { Signal } from "@/types/api";
+export function SignalSummary({ signals }: { signals: Signal[] }) { const data = ["STOCKOUT_RISK", "PAYMENT_OVERDUE", "SUPPLIER_DELAY"].map(type => ({ name: type === "STOCKOUT_RISK" ? "Inventory" : type === "PAYMENT_OVERDUE" ? "Receivables" : "Suppliers", count: signals.filter(s => s.signal_type === type).length })); return <div className="chart-placeholder"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ top: 10, right: 8, bottom: 0, left: -27 }}><CartesianGrid stroke="#e8edf1" vertical={false} /><XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: "#637083", fontSize: 11 }} /><YAxis allowDecimals={false} tickLine={false} axisLine={false} tick={{ fill: "#637083", fontSize: 11 }} /><Tooltip /><Bar dataKey="count" fill="#145f55" radius={[4, 4, 0, 0]} maxBarSize={45} /></BarChart></ResponsiveContainer></div>; }
+

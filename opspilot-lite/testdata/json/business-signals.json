@@ -1,0 +1,6 @@
+[
+  {"signal_type":"STOCKOUT_RISK","severity":"HIGH","title":"Tile X21 may stock out","metric_name":"stock_days_remaining","metric_value":4},
+  {"signal_type":"PAYMENT_OVERDUE","severity":"HIGH","title":"ABC Traders invoice overdue","metric_name":"days_overdue","metric_value":47},
+  {"signal_type":"SUPPLIER_DELAY","severity":"HIGH","title":"XYZ Metals delivery reliability is falling","metric_name":"on_time_rate","metric_value":40}
+]
+

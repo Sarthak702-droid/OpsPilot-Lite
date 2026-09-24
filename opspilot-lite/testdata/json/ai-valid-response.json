@@ -1,0 +1,11 @@
+{
+  "priority": "HIGH",
+  "category": "INVENTORY",
+  "title": "Tile X21 may stock out",
+  "reason": "Stock coverage is below the supplier lead time.",
+  "evidence": ["Tile X21 may stock out: 4.0 days of stock versus 6.0 days supplier lead time"],
+  "recommended_action": "CREATE_PURCHASE_ORDER",
+  "recommended_quantity": 100,
+  "requires_approval": true
+}
+

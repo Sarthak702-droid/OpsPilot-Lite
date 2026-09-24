@@ -1,0 +1,2 @@
+supplier_id,po_number,order_date,expected_delivery_date,delivered_at,status
+REPLACE_WITH_SUPPLIER_UUID,PO-DEMO,2026-09-01,2026-09-07,2026-09-10,DELIVERED

@@ -1,0 +1,13 @@
+export type ListResponse<T> = { items: T[] };
+export type Severity = "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export type Organization = { onboarded: boolean; organization_id?: string; user_id?: string; role?: string; name?: string; currency?: string };
+export type Dashboard = { revenue_30d: number; outstanding: number; overdue: number; low_stock: number; critical_alerts: number; pending_actions: number; priorities: Signal[]; ai_available: boolean };
+export type Signal = { id: string; signal_type: string; entity_type: string; entity_id: string; severity: Severity; title: string; description: string; metric_name: string; metric_value: number | null; status: string; created_at: string };
+export type InventoryItem = { id: string; sku: string; name: string; supplier: string; metrics: { Stock: number; Sales7D: number; Sales30D: number; AverageDailySales7D: number; AverageDailySales30D: number; StockDaysRemaining: number; SupplierLeadTime: number; ReorderPoint: number; SafetyStock: number; RecommendedOrderQuantity: number }; risk: Severity };
+export type Customer = { id: string; name: string; business_name: string; email: string; outstanding: number; lifetime_revenue: number; last_purchase: string | null };
+export type Invoice = { id: string; invoice_number: string; customer: string; invoice_date: string; due_date: string; total: number; paid: number; outstanding: number; status: string; days_overdue: number; risk: Severity };
+export type Supplier = { id: string; name: string; email: string; lead_time_days: number; orders: number; delivered: number; late: number; on_time_rate: number; risk: Severity | "INSUFFICIENT_DATA" };
+export type Action = { id: string; recommendation_id?: string; action_type: string; payload: Record<string, unknown>; product_name?: string; supplier_name?: string; reason: string; evidence: string[]; risk_level: string; status: string; created_at: string };
+export type Recommendation = { priority: Severity; category: string; title: string; reason: string; evidence: string[]; recommended_action: string; recommended_quantity?: number | null; requires_approval: boolean };
+export type AskResponse = { source: "deterministic" | "mimo" | "fallback"; answer?: string; recommendation?: Recommendation; evidence: string[]; ai_available: boolean };
+export type SavedRecommendation = {id:string;signal_id:string;model:string;recommendation:Recommendation;created_at:string};

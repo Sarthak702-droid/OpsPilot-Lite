@@ -1,0 +1,5 @@
+# Signal engine
+
+The worker runs on start and every 15 minutes. Inventory coverage is stock divided by recent daily sales; reorder point is daily demand times lead days plus three days of safety stock. Zero observed demand does not create a stockout alert. Invoice age maps to LOW (0–7), MEDIUM (8–30), HIGH (31–60), and CRITICAL (61+). Supplier reliability uses delivered orders; fewer than three deliveries are marked insufficient data. Signals are upserted by organization, type, entity type, and entity ID, then expired when stale.
+
+Stockout signals with a preferred supplier create an approval required draft purchase order suggestion. Approval and execution are separate; execution recalculates inventory risk and quantity from current data. If the approved quantity is stale, the action becomes `FAILED`, an audit event records the reason, and the next signal refresh can suggest a new action. Successful execution creates an internal draft PO and records an audit event. No supplier message or payment is sent.

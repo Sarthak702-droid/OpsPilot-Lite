@@ -1,0 +1,2 @@
+source_id,customer_id,sale_date,total_amount
+sale-001,REPLACE_WITH_CUSTOMER_UUID,2026-09-24,2400

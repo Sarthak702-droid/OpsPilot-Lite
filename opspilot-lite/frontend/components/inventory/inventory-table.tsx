@@ -1,0 +1,4 @@
+import { Badge } from "@/components/ui/badge";
+import type { InventoryItem } from "@/types/api";
+export function InventoryTable({ items }: { items: InventoryItem[] }) { return <div className="card table-wrap"><table><thead><tr><th>Product</th><th>SKU</th><th>Stock</th><th>7-day sales</th><th>Days left</th><th>Lead time</th><th>Reorder point</th><th>Order qty</th><th>Risk</th></tr></thead><tbody>{items.map(x => <tr key={x.id}><td className="strong">{x.name}</td><td>{x.sku}</td><td>{x.metrics.Stock}</td><td>{x.metrics.Sales7D}</td><td>{x.metrics.AverageDailySales7D > 0 ? x.metrics.StockDaysRemaining.toFixed(1) : "—"}</td><td>{x.metrics.SupplierLeadTime.toFixed(0)} days</td><td>{x.metrics.ReorderPoint.toFixed(0)}</td><td>{x.metrics.RecommendedOrderQuantity.toFixed(0)}</td><td><Badge value={x.risk} /></td></tr>)}</tbody></table>{items.length === 0 && <div className="empty">No products imported yet.</div>}</div>; }
+
