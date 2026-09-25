@@ -19,6 +19,7 @@ type Config struct {
 }
 
 func Load() Config {
+	loadEnv()
 	seconds, err := strconv.Atoi(value("MIMO_TIMEOUT_SECONDS", "120"))
 	if err != nil || seconds < 1 {
 		seconds = 120
@@ -32,7 +33,7 @@ func Load() Config {
 		jwksURL = issuer + "/.well-known/jwks.json"
 	}
 	return Config{
-		Env: value("APP_ENV", "development"), Port: value("PORT", "8080"),
+		Env: value("APP_ENV", "development"), Port: value("PORT", "18080"),
 		DatabaseURL: value("DATABASE_URL", "postgres://opspilot:opspilot@localhost:15432/opspilot?sslmode=disable"),
 		RedisURL:    value("REDIS_URL", "redis://localhost:16379/0"), FrontendOrigin: value("FRONTEND_ORIGIN", "http://localhost:3000"),
 		ClerkJWKSURL: jwksURL, ClerkIssuer: issuer,
@@ -65,4 +66,35 @@ func value(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func loadEnv() {
+	candidates := []string{
+		".env", "../.env", "../../.env", "../../../.env",
+		"frontend/.env.local", "../frontend/.env.local", "../../frontend/.env.local", "../../../frontend/.env.local",
+	}
+	for _, path := range candidates {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				val := strings.TrimSpace(parts[1])
+				if (strings.HasPrefix(val, "\"") && strings.HasSuffix(val, "\"")) ||
+					(strings.HasPrefix(val, "'") && strings.HasSuffix(val, "'")) {
+					val = val[1 : len(val)-1]
+				}
+				if os.Getenv(key) == "" && val != "" {
+					_ = os.Setenv(key, val)
+				}
+			}
+		}
+	}
 }

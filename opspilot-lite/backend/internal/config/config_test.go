@@ -16,3 +16,17 @@ func TestClerkIssuerFromPublishableKey(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigLoad(t *testing.T) {
+	cfg := Load()
+	if cfg.Port != "18080" {
+		t.Fatalf("expected Port 18080, got %q", cfg.Port)
+	}
+	if cfg.ClerkJWKSURL == "" {
+		t.Fatal("expected ClerkJWKSURL to be populated by auto-loaded .env")
+	}
+	if cfg.ClerkIssuer == "" {
+		t.Fatal("expected ClerkIssuer to be populated by auto-loaded .env")
+	}
+}
+

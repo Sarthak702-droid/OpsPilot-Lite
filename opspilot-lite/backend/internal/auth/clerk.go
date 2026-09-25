@@ -62,7 +62,11 @@ func (v *Verifier) Subject(ctx context.Context, raw string) (string, error) {
 		return "", fmt.Errorf("invalid Clerk session: %w", err)
 	}
 	if claims.AuthorizedParty != "" && v.AuthorizedParty != "" && claims.AuthorizedParty != v.AuthorizedParty {
-		return "", errors.New("Clerk session authorized party does not match this app")
+		azpNorm := strings.Replace(strings.TrimRight(claims.AuthorizedParty, "/"), "127.0.0.1", "localhost", 1)
+		expNorm := strings.Replace(strings.TrimRight(v.AuthorizedParty, "/"), "127.0.0.1", "localhost", 1)
+		if azpNorm != expNorm {
+			return "", errors.New("Clerk session authorized party does not match this app")
+		}
 	}
 	return claims.Subject, nil
 }

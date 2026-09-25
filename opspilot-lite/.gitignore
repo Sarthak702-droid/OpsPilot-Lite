@@ -10,3 +10,7 @@
 *.log
 *.test
 .DS_Store
+
+.env
+.env.local
+frontend/.env.local
