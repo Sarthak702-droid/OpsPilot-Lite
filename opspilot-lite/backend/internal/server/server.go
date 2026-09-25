@@ -41,7 +41,7 @@ func New(cfg config.Config, db *pgxpool.Pool, redis *redis.Client) *gin.Engine {
 		}
 		c.JSON(200, gin.H{"status": "ready"})
 	})
-	verifier := auth.NewVerifier(cfg.ClerkJWKSURL, cfg.ClerkIssuer)
+	verifier := auth.NewVerifier(cfg.ClerkJWKSURL, cfg.ClerkIssuer, cfg.FrontendOrigin)
 	api := r.Group("/api")
 	api.Use(auth.Authenticate(verifier, db), rateLimit(redis, "api", 120, time.Minute))
 	org := organization.Handler{DB: db}

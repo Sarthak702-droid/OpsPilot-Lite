@@ -3,6 +3,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 if [[ -f .env ]]; then set -a; source .env; set +a; fi
+if [[ -f frontend/.env.local ]]; then set -a; source frontend/.env.local; set +a; fi
 docker compose up -d postgres redis
 ./scripts/migrate.sh
 export GOCACHE="${GOCACHE:-/tmp/opspilot-go-build}"

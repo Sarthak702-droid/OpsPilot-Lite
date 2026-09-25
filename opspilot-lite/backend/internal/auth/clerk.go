@@ -27,22 +27,27 @@ type jwks struct {
 	Keys []jwk `json:"keys"`
 }
 type Verifier struct {
-	URL, Issuer string
-	Client      *http.Client
-	mu          sync.RWMutex
-	keys        map[string]*rsa.PublicKey
-	fetched     time.Time
+	URL, Issuer, AuthorizedParty string
+	Client                       *http.Client
+	mu                           sync.RWMutex
+	keys                         map[string]*rsa.PublicKey
+	fetched                      time.Time
 }
 
-func NewVerifier(url, issuer string) *Verifier {
-	return &Verifier{URL: url, Issuer: issuer, Client: &http.Client{Timeout: 5 * time.Second}}
+func NewVerifier(url, issuer, authorizedParty string) *Verifier {
+	return &Verifier{URL: url, Issuer: issuer, AuthorizedParty: authorizedParty, Client: &http.Client{Timeout: 5 * time.Second}}
+}
+
+type sessionClaims struct {
+	jwt.RegisteredClaims
+	AuthorizedParty string `json:"azp"`
 }
 
 func (v *Verifier) Subject(ctx context.Context, raw string) (string, error) {
 	if v.URL == "" || v.Issuer == "" {
 		return "", errors.New("Clerk verification is not configured")
 	}
-	claims := jwt.RegisteredClaims{}
+	claims := sessionClaims{}
 	token, err := jwt.ParseWithClaims(raw, &claims, func(t *jwt.Token) (any, error) {
 		if t.Method.Alg() != "RS256" {
 			return nil, errors.New("unexpected signing algorithm")
@@ -55,6 +60,9 @@ func (v *Verifier) Subject(ctx context.Context, raw string) (string, error) {
 	}, jwt.WithIssuer(v.Issuer), jwt.WithExpirationRequired(), jwt.WithValidMethods([]string{"RS256"}), jwt.WithLeeway(30*time.Second))
 	if err != nil || !token.Valid || claims.Subject == "" {
 		return "", fmt.Errorf("invalid Clerk session: %w", err)
+	}
+	if claims.AuthorizedParty != "" && v.AuthorizedParty != "" && claims.AuthorizedParty != v.AuthorizedParty {
+		return "", errors.New("Clerk session authorized party does not match this app")
 	}
 	return claims.Subject, nil
 }

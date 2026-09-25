@@ -16,14 +16,14 @@ Requires Go 1.25, Node 24, Docker Compose, and a Clerk application.
 ```bash
 cp .env.example .env
 cp frontend/.env.example frontend/.env.local
-# Fill Clerk publishable key, Clerk issuer, and JWKS URL.
+# Run `clerk init --app app_3JpHDzdwZdsxSQA1kfaIWgy3wbG` from frontend/ to link Clerk and pull its development keys.
 make db-up
 make migrate
 cd frontend && npm ci && cd ..
 make dev
 ```
 
-The frontend runs at `http://localhost:3000`, the local API at `http://localhost:18080`, PostgreSQL on 15432, and Redis on 16379. The frontend uses port 3000 even though the Go API reads `PORT` from root `.env`. If port 18080 is already in use, change `PORT` and `NEXT_PUBLIC_API_URL` in root `.env` and `NEXT_PUBLIC_API_URL` in `frontend/.env.local` together. `scripts/dev.sh` loads root `.env`.
+The frontend runs at `http://localhost:3000`, the local API at `http://localhost:18080`, PostgreSQL on 15432, and Redis on 16379. The frontend uses port 3000 even though the Go API reads `PORT` from root `.env`. If port 18080 is already in use, change `PORT` and `NEXT_PUBLIC_API_URL` in root `.env` and `NEXT_PUBLIC_API_URL` in `frontend/.env.local` together. `scripts/dev.sh` loads root `.env` and `frontend/.env.local`; the Go API derives its Clerk issuer and JWKS URL from the publishable key when explicit values are absent. For separate backend and worker terminals, load both files before starting those processes.
 
 To create the deterministic demo organization and refresh signals:
 
