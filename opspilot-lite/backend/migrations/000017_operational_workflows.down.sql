@@ -1,0 +1,12 @@
+DROP TABLE organization_invitations;
+DROP TABLE organization_settings;
+DROP INDEX actions_pending_po_send_unique;
+ALTER TABLE actions DROP COLUMN requested_by;
+ALTER TABLE payments DROP COLUMN reversal_reason, DROP COLUMN reversed_by, DROP COLUMN reversed_at;
+DROP TABLE purchase_order_receipts;
+ALTER TABLE purchase_order_items DROP CONSTRAINT purchase_order_items_org_id_unique;
+ALTER TABLE purchase_orders DROP COLUMN send_state, DROP COLUMN sent_at, DROP COLUMN created_by;
+ALTER TABLE purchase_orders DROP CONSTRAINT purchase_orders_amount_nonnegative;
+ALTER TABLE sale_items DROP CONSTRAINT sale_items_money_nonnegative, DROP CONSTRAINT sale_items_quantity_positive;
+ALTER TABLE sales DROP CONSTRAINT sales_status_check;
+ALTER TABLE sales DROP COLUMN created_by, DROP COLUMN updated_at, DROP COLUMN created_at;

@@ -47,6 +47,11 @@ func (e Engine) Run(ctx context.Context) error {
 	return err
 }
 func (e Engine) RunOrganization(ctx context.Context, org uuid.UUID) error {
+	var overstockDays int
+	var highValue float64
+	if err := e.DB.QueryRow(ctx, `SELECT COALESCE(s.overstock_days,90),COALESCE(s.high_value_threshold,100000)::float8 FROM organizations o LEFT JOIN organization_settings s ON s.organization_id=o.id WHERE o.id=$1`, org).Scan(&overstockDays, &highValue); err != nil {
+		return err
+	}
 	items, err := e.Inventory.List(ctx, org)
 	if err != nil {
 		return err
@@ -63,6 +68,15 @@ func (e Engine) RunOrganization(ctx context.Context, org uuid.UUID) error {
 			}
 		} else {
 			err = e.Repository.Resolve(ctx, org, "STOCKOUT_RISK", "PRODUCT", x.ID)
+		}
+		if err != nil {
+			return err
+		}
+		if x.Metrics.AverageDailySales30D > 0 && x.Metrics.StockDaysRemaining > float64(overstockDays) {
+			v := x.Metrics.StockDaysRemaining
+			err = e.Repository.Upsert(ctx, org, Signal{Type: "OVERSTOCK", EntityType: "PRODUCT", EntityID: x.ID, Severity: "MEDIUM", Title: x.Name + " has excess coverage", Description: fmt.Sprintf("%.1f days of stock exceeds the %d day workspace threshold", v, overstockDays), MetricName: "stock_days_remaining", MetricValue: &v})
+		} else {
+			err = e.Repository.Resolve(ctx, org, "OVERSTOCK", "PRODUCT", x.ID)
 		}
 		if err != nil {
 			return err
@@ -99,6 +113,15 @@ func (e Engine) RunOrganization(ctx context.Context, org uuid.UUID) error {
 			err = e.Repository.Upsert(ctx, org, Signal{Type: "PAYMENT_OVERDUE", EntityType: "INVOICE", EntityID: x.id, Severity: payments.Severity(days), Title: "Invoice " + x.number + " overdue", Description: fmt.Sprintf("%.0f outstanding, %d days overdue", x.amount, days), MetricName: "days_overdue", MetricValue: &v})
 		} else {
 			err = e.Repository.Resolve(ctx, org, "PAYMENT_OVERDUE", "INVOICE", x.id)
+		}
+		if err != nil {
+			return err
+		}
+		if days == 0 && x.amount >= highValue {
+			v := x.amount
+			err = e.Repository.Upsert(ctx, org, Signal{Type: "HIGH_VALUE_PAYMENT_PENDING", EntityType: "INVOICE", EntityID: x.id, Severity: "HIGH", Title: "High value invoice " + x.number + " is pending", Description: fmt.Sprintf("%.2f outstanding meets the %.2f workspace threshold", x.amount, highValue), MetricName: "outstanding_amount", MetricValue: &v})
+		} else {
+			err = e.Repository.Resolve(ctx, org, "HIGH_VALUE_PAYMENT_PENDING", "INVOICE", x.id)
 		}
 		if err != nil {
 			return err

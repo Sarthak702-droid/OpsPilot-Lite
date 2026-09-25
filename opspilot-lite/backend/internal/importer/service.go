@@ -119,6 +119,9 @@ func (s Service) ImportRows(ctx context.Context, org uuid.UUID, kind string, row
 			if err := positiveNumber(get(row, "amount")); err != nil {
 				return Result{}, fmt.Errorf("row %d amount: %w", n+2, err)
 			}
+			if amount, _ := strconv.ParseFloat(get(row, "amount"), 64); amount <= 0 {
+				return Result{}, fmt.Errorf("row %d amount must be positive", n+2)
+			}
 		}
 	}
 	err := database.WithTx(ctx, s.DB, func(tx pgx.Tx) error {

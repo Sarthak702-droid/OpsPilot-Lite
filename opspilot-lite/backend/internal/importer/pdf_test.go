@@ -3,6 +3,7 @@ package importer
 import (
 	"context"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -32,4 +33,10 @@ func TestPDFTextAndReview(t *testing.T) {
 	if err := valid.Validate(); err == nil {
 		t.Fatal("accepted invoice without customer")
 	}
+}
+func TestScannedPDFUsesLocalOCR(t *testing.T) {
+	if _,err:=exec.LookPath("tesseract");err!=nil{t.Skip("Tesseract is not installed on this host")}
+	data,err:=os.ReadFile("../../../testdata/pdf/scanned-invoice.pdf");if err!=nil{t.Fatal(err)}
+	content,err:=pdfText(context.Background(),data);if err!=nil{t.Fatal(err)}
+	if !strings.Contains(content,"SCANNED-001") || !strings.Contains(content,"1200.00"){t.Fatalf("scanned PDF text missing: %q",content)}
 }

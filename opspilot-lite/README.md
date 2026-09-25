@@ -4,9 +4,9 @@ Operational intelligence for small and medium businesses. PostgreSQL holds facts
 
 ## Current implementation
 
-- Next.js 16 dashboard, inventory, customers, invoices, suppliers, signals, Ask OpsPilot, action center, CSV/XLSX import, and onboarding.
-- Go/Gin API with Clerk JWT verification, tenant scoped reads and foreign keys, role checks, Redis rate limits, dashboard cache, and optional OTLP request tracing.
-- PostgreSQL migrations, deterministic signal worker, CSV/XLSX imports for products, customers, suppliers, invoices, stock movements, purchase orders, sales, and payments, purchase order draft actions, audit events.
+- Next.js 16 dashboard, inventory, customers, sales, invoices, payments, suppliers, purchase orders, signals, Ask OpsPilot, action center, imports, onboarding, and workspace settings.
+- Go/Gin API with Clerk JWT verification, tenant scoped reads and foreign keys, role checks, Redis rate limits, dashboard cache, optional OTLP tracing, and Prometheus format HTTP metrics at `/metrics`.
+- PostgreSQL migrations, coordinated deterministic signal worker, CSV/XLSX imports, sales with atomic stock movements, payment recording and reversal, purchase order approval, supplier send, receipt tracking, and audit events.
 - SGLang chat completions client with retries, timeouts, evidence validation, audited recommendation persistence, SSE proxy, and deterministic fallback.
 
 ## Setup
@@ -52,6 +52,8 @@ SGLang is independently deployed. Set `MIMO_BASE_URL` on the Go backend; the bro
 
 ## Known gaps before production
 
-CSV and XLSX imports are available. PDF import extracts text with `pdftotext`, optionally asks MiMo for field suggestions, then requires a user to review the fields before committing an invoice, draft purchase order, or quotation record. Committed PDFs are stored in private Cloudflare R2; configure the R2 variables to enable the final commit. Scanned image-only PDFs need OCR and are not supported yet.
+CSV and XLSX imports are available. PDF import extracts text with `pdftotext` and uses local Tesseract OCR for scanned pages. MiMo may suggest fields, but a user must review them before committing an invoice, draft purchase order, or quotation. Committed PDFs are stored in private Cloudflare R2; configure the R2 variables to enable final commit. OCR processes the first five pages at 150 DPI and needs the backend image or local `pdftoppm` and `tesseract` binaries.
 
-Manual payment management UI, full purchase order management, and comprehensive authorization/integration coverage are not implemented yet. OTLP tracing covers API requests and non-streaming MiMo completions; it does not yet expose database, Redis, worker, or metrics instrumentation. The action executor creates an internal draft PO only; it sends no supplier commitment. Do not deploy this repository as a complete financial operations platform without completing and reviewing those areas.
+Sales, payment, and purchase order changes are available to OWNER, ADMIN, and MANAGER. A purchase order send requires approval by a different authorized member and an explicit execution step in Action center. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, and optionally SMTP credentials to send through a STARTTLS server. If delivery outcome is uncertain, an owner or admin must confirm whether it was sent before another attempt. Unsent drafts can be cancelled; sent orders need a supplier-coordinated cancellation outside this workflow. Imported sales remain revenue-only records, and imported purchase orders without line items must be edited before sending.
+
+Database integration tests require `TEST_DATABASE_URL` and `TEST_REDIS_URL`; the normal `go test ./...` run skips them without these variables. Validate the configured Clerk, R2, and SMTP services in a deployment environment before handling live financial data.

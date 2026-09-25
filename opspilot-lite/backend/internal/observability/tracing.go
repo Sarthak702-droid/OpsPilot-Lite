@@ -15,6 +15,9 @@ import (
 // InitTracing enables OTLP/HTTP spans when OTEL_EXPORTER_OTLP_ENDPOINT is set.
 // Without an endpoint the API stays operational with a no-op provider.
 func InitTracing(ctx context.Context) (func(context.Context) error, error) {
+	return InitTracingFor(ctx, "opspilot-api")
+}
+func InitTracingFor(ctx context.Context, serviceName string) (func(context.Context) error, error) {
 	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" {
 		return func(context.Context) error { return nil }, nil
 	}
@@ -22,7 +25,7 @@ func InitTracing(ctx context.Context) (func(context.Context) error, error) {
 	if err != nil {
 		return nil, err
 	}
-	res := resource.NewWithAttributes("", attribute.String("service.name", "opspilot-api"))
+	res := resource.NewWithAttributes("", attribute.String("service.name", serviceName))
 	provider := sdktrace.NewTracerProvider(sdktrace.WithBatcher(exporter), sdktrace.WithResource(res))
 	otel.SetTracerProvider(provider)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))

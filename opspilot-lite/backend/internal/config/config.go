@@ -12,6 +12,7 @@ type Config struct {
 	MimoBaseURL, MimoModel, MimoAPIKey                          string
 	MimoTimeout                                                 time.Duration
 	R2AccountID, R2AccessKey, R2SecretKey, R2Bucket, R2Endpoint string
+	SMTPHost, SMTPPort, SMTPUser, SMTPPassword, SMTPFrom        string
 }
 
 func Load() Config {
@@ -28,6 +29,7 @@ func Load() Config {
 		MimoModel:   value("MIMO_MODEL", "XiaomiMiMo/MiMo-V2.6-Pro-RL"),
 		MimoAPIKey:  os.Getenv("MIMO_API_KEY"), MimoTimeout: time.Duration(seconds) * time.Second,
 		R2AccountID: os.Getenv("R2_ACCOUNT_ID"), R2AccessKey: os.Getenv("R2_ACCESS_KEY"), R2SecretKey: os.Getenv("R2_SECRET_KEY"), R2Bucket: os.Getenv("R2_BUCKET"), R2Endpoint: os.Getenv("R2_ENDPOINT"),
+		SMTPHost: os.Getenv("SMTP_HOST"), SMTPPort: value("SMTP_PORT", "587"), SMTPUser: os.Getenv("SMTP_USER"), SMTPPassword: os.Getenv("SMTP_PASSWORD"), SMTPFrom: os.Getenv("SMTP_FROM"),
 	}
 }
 

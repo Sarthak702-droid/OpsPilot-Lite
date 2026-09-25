@@ -1,0 +1,10 @@
+import { api } from "@/lib/api-client";
+import type { ListResponse, PurchaseOrder } from "@/types/api";
+export type OrderInput = { supplier_id: string; po_number: string; order_date: string; expected_delivery_date: string; items: { product_id: string; quantity: string; unit_cost: string }[] };
+export const getOrders = (token: string | null) => api<ListResponse<PurchaseOrder>>("/api/purchase-orders", token);
+export const getOrder = (token: string | null, id: string) => api<PurchaseOrder>(`/api/purchase-orders/${id}`, token);
+export const saveOrder = (token: string | null, input: OrderInput, id?: string) => api<{ id: string; status: string }>(id ? `/api/purchase-orders/${id}` : "/api/purchase-orders", token, { method: id ? "PATCH" : "POST", body: JSON.stringify(input) });
+export const requestOrderSend = (token: string | null, id: string) => api<{ action_id: string; status: string }>(`/api/purchase-orders/${id}/request-send`, token, { method: "POST" });
+export const receiveOrder = (token: string | null, id: string, item_id: string, quantity: string, reference: string) => api<{ id: string; status: string }>(`/api/purchase-orders/${id}/receipts`, token, { method: "POST", body: JSON.stringify({ item_id, quantity, reference }) });
+export const cancelOrder = (token: string | null, id: string) => api<{ id: string; status: string }>(`/api/purchase-orders/${id}/cancel`, token, { method: "POST" });
+export const resolveOrderSend = (token: string | null, id: string, outcome: "SENT" | "NOT_SENT") => api<{ id: string; send_state: string }>(`/api/purchase-orders/${id}/resolve-send`, token, { method: "POST", body: JSON.stringify({ outcome }) });

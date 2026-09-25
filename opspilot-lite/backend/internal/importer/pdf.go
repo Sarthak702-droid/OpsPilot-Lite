@@ -12,8 +12,11 @@ import (
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/ai"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/database"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/storage"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -68,12 +71,51 @@ func pdfText(ctx context.Context, data []byte) (string, error) {
 	var stderr bytes.Buffer
 	cmd.Stdout = output
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		return "", errors.New("could not extract PDF text")
+	if err := cmd.Run(); err == nil {
+		if text := strings.TrimSpace(output.String()); text != "" {
+			return text, nil
+		}
 	}
-	text := strings.TrimSpace(output.String())
-	if text == "" {
+	return ocrPDF(ctx, data)
+}
+func ocrPDF(ctx context.Context, data []byte) (string, error) {
+	dir, err := os.MkdirTemp("", "opspilot-ocr-")
+	if err != nil {
+		return "", errors.New("could not prepare PDF OCR")
+	}
+	defer os.RemoveAll(dir)
+	path := filepath.Join(dir, "source.pdf")
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return "", errors.New("could not prepare PDF OCR")
+	}
+	ocrCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	render := exec.CommandContext(ocrCtx, "pdftoppm", "-f", "1", "-l", "5", "-r", "150", "-png", path, filepath.Join(dir, "page"))
+	if err := render.Run(); err != nil {
+		return "", errors.New("could not render scanned PDF")
+	}
+	pages, err := filepath.Glob(filepath.Join(dir, "page-*.png"))
+	if err != nil || len(pages) == 0 {
 		return "", errors.New("PDF contains no extractable text")
+	}
+	sort.Strings(pages)
+	var all strings.Builder
+	for _, page := range pages {
+		command := exec.CommandContext(ocrCtx, "tesseract", page, "stdout", "-l", "eng")
+		out := &limitedBuffer{Limit: 64 << 10}
+		command.Stdout = out
+		if err := command.Run(); err != nil {
+			return "", errors.New("local OCR is unavailable or failed")
+		}
+		if all.Len()+out.Len() > 64<<10 {
+			return "", errors.New("PDF text exceeds limit")
+		}
+		all.WriteString(out.String())
+		all.WriteByte('\n')
+	}
+	text := strings.TrimSpace(all.String())
+	if text == "" {
+		return "", errors.New("PDF contains no readable text")
 	}
 	return text, nil
 }

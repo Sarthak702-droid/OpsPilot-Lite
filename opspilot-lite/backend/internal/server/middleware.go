@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/auth"
+	"github.com/opspilot-lite/opspilot-lite/backend/internal/cache"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/common"
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
@@ -47,7 +48,9 @@ func logging() gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		identity, _ := auth.Current(c)
-		log.Printf("request_id=%s organization_id=%s method=%s path=%s status=%d duration_ms=%d", c.GetString("request_id"), identity.OrganizationID, c.Request.Method, c.FullPath(), c.Writer.Status(), time.Since(start).Milliseconds())
+		elapsed := time.Since(start)
+		recordHTTPMetric(c.Request.Method, c.FullPath(), c.Writer.Status(), elapsed)
+		log.Printf("request_id=%s organization_id=%s method=%s path=%s status=%d duration_ms=%d", c.GetString("request_id"), identity.OrganizationID, c.Request.Method, c.FullPath(), c.Writer.Status(), elapsed.Milliseconds())
 	}
 }
 func rateLimit(client *redis.Client, scope string, limit int, window time.Duration) gin.HandlerFunc {
@@ -79,12 +82,24 @@ func cors(origin string) gin.HandlerFunc {
 			c.Header("Access-Control-Allow-Origin", origin)
 			c.Header("Vary", "Origin")
 			c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-ID")
-			c.Header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
 		}
 		if c.Request.Method == http.MethodOptions {
 			c.AbortWithStatus(http.StatusNoContent)
 			return
 		}
 		c.Next()
+	}
+}
+func invalidateDashboard(client *redis.Client) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+		if c.Request.Method == http.MethodGet || c.Writer.Status() >= 400 {
+			return
+		}
+		id, ok := auth.Current(c)
+		if ok {
+			_ = client.Del(c.Request.Context(), cache.DashboardKey(id.OrganizationID)).Err()
+		}
 	}
 }

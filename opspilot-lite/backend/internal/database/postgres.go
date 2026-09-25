@@ -15,6 +15,7 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	cfg.MaxConns = 15
 	cfg.MinConns = 1
 	cfg.MaxConnIdleTime = 5 * time.Minute
+	cfg.ConnConfig.Tracer = queryTracer{}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, err

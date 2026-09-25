@@ -11,6 +11,7 @@ import (
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/common"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/database"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/inventory"
+	"github.com/opspilot-lite/opspilot-lite/backend/internal/purchaseorders"
 	"log"
 	"math"
 	"net/http"
@@ -29,17 +30,22 @@ type Item struct {
 	Status           string          `json:"status"`
 	CreatedAt        string          `json:"created_at"`
 }
-type Handler struct{ DB *pgxpool.Pool }
+type Handler struct {
+	DB     *pgxpool.Pool
+	Mailer purchaseorders.Mailer
+}
 
 func (h Handler) List(c *gin.Context) {
 	id, _ := auth.Current(c)
 	rows, err := h.DB.Query(c.Request.Context(), `SELECT a.id,a.recommendation_id,a.action_type,a.payload,
-		COALESCE(p.name,''),COALESCE(s.name,''),COALESCE(r.reason,a.payload->>'reason',''),
+		COALESCE(p.name,''),COALESCE(s.name,po_supplier.name,''),COALESCE(r.reason,a.payload->>'reason',CASE WHEN a.action_type='SEND_PURCHASE_ORDER' THEN 'Send purchase order '||COALESCE(po.po_number,'')||' to supplier' ELSE '' END),
 		COALESCE(r.structured_payload->'evidence','[]'::jsonb),a.risk_level,a.status,a.created_at::text
 		FROM actions a
 		LEFT JOIN ai_recommendations r ON r.organization_id=a.organization_id AND r.id=a.recommendation_id
 		LEFT JOIN products p ON p.organization_id=a.organization_id AND p.id::text=a.payload->>'product_id'
 		LEFT JOIN suppliers s ON s.organization_id=a.organization_id AND s.id::text=a.payload->>'supplier_id'
+		LEFT JOIN purchase_orders po ON po.organization_id=a.organization_id AND po.id::text=a.payload->>'purchase_order_id'
+		LEFT JOIN suppliers po_supplier ON po_supplier.organization_id=po.organization_id AND po_supplier.id=po.supplier_id
 		WHERE a.organization_id=$1 ORDER BY a.created_at DESC LIMIT 100`, id.OrganizationID)
 	if err != nil {
 		common.Error(c, 500, "DATABASE_ERROR", "Could not load actions")
@@ -78,7 +84,7 @@ func (h Handler) Decide(approve bool) gin.HandlerFunc {
 		}
 		var changed bool
 		err = database.WithTx(c.Request.Context(), h.DB, func(tx pgx.Tx) error {
-			tag, err := tx.Exec(c.Request.Context(), `UPDATE actions SET status=$1,approved_by=CASE WHEN $1='APPROVED' THEN $2::uuid ELSE NULL END WHERE id=$3 AND organization_id=$4 AND status IN ('SUGGESTED','AWAITING_APPROVAL')`, next, id.UserID, actionID, id.OrganizationID)
+			tag, err := tx.Exec(c.Request.Context(), `UPDATE actions SET status=$1,approved_by=CASE WHEN $1='APPROVED' THEN $2::uuid ELSE NULL END WHERE id=$3 AND organization_id=$4 AND status IN ('SUGGESTED','AWAITING_APPROVAL') AND ($1<>'APPROVED' OR action_type<>'SEND_PURCHASE_ORDER' OR requested_by<>$2)`, next, id.UserID, actionID, id.OrganizationID)
 			if err != nil {
 				return err
 			}
@@ -106,6 +112,25 @@ func (h Handler) Execute(c *gin.Context) {
 	actionID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		common.Error(c, 400, "BAD_REQUEST", "Invalid action ID")
+		return
+	}
+	var actionType string
+	lookupErr := h.DB.QueryRow(c.Request.Context(), `SELECT action_type FROM actions WHERE organization_id=$1 AND id=$2 AND status='APPROVED'`, id.OrganizationID, actionID).Scan(&actionType)
+	if lookupErr == nil && actionType == "SEND_PURCHASE_ORDER" {
+		err := (purchaseorders.Service{DB: h.DB}).Send(c.Request.Context(), id.OrganizationID, id.UserID, actionID, h.Mailer)
+		if err != nil {
+			if errors.Is(err, purchaseorders.ErrMailUnavailable) {
+				common.Error(c, 503, "SMTP_UNAVAILABLE", "Supplier email is not configured")
+				return
+			}
+			if errors.Is(err, purchaseorders.ErrConflict) {
+				common.Error(c, 409, "ACTION_CONFLICT", "Purchase order cannot be sent in its current state")
+				return
+			}
+			common.Error(c, 502, "SEND_UNCERTAIN", "Supplier email outcome needs review before another attempt")
+			return
+		}
+		c.JSON(200, gin.H{"id": actionID, "status": "EXECUTED"})
 		return
 	}
 	var found, stale bool

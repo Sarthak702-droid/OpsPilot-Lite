@@ -11,6 +11,7 @@ func Connect(ctx context.Context, rawURL string) (*redis.Client, error) {
 		return nil, err
 	}
 	client := redis.NewClient(options)
+	client.AddHook(redisTracing{})
 	if err := client.Ping(ctx).Err(); err != nil {
 		client.Close()
 		return nil, err

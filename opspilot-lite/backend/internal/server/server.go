@@ -15,7 +15,10 @@ import (
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/inventory"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/invoices"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/organization"
+	"github.com/opspilot-lite/opspilot-lite/backend/internal/payments"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/products"
+	"github.com/opspilot-lite/opspilot-lite/backend/internal/purchaseorders"
+	"github.com/opspilot-lite/opspilot-lite/backend/internal/sales"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/signals"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/storage"
 	"github.com/opspilot-lite/opspilot-lite/backend/internal/suppliers"
@@ -28,6 +31,7 @@ func New(cfg config.Config, db *pgxpool.Pool, redis *redis.Client) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery(), requestID(), tracing(), logging(), cors(cfg.FrontendOrigin))
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.GET("/metrics", metrics)
 	r.GET("/ready", func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 		defer cancel()
@@ -43,8 +47,15 @@ func New(cfg config.Config, db *pgxpool.Pool, redis *redis.Client) *gin.Engine {
 	org := organization.Handler{DB: db}
 	api.GET("/organization/me", org.Me)
 	api.POST("/organization", org.Create)
+	api.POST("/organization/invitations/accept", org.AcceptInvite)
 	protected := api.Group("")
 	protected.Use(auth.RequireMembership())
+	protected.Use(invalidateDashboard(redis))
+	protected.GET("/organization/settings", org.GetSettings)
+	protected.PATCH("/organization/settings", auth.RequireRole("OWNER", "ADMIN"), org.UpdateSettings)
+	protected.GET("/organization/users", org.ListUsers)
+	protected.POST("/organization/invitations", auth.RequireRole("OWNER", "ADMIN"), org.Invite)
+	protected.PATCH("/organization/users/:id/role", auth.RequireRole("OWNER", "ADMIN"), org.UpdateRole)
 	sr := signals.Repository{DB: db}
 	inv := inventory.Service{DB: db}
 	sup := suppliers.Service{DB: db}
@@ -54,6 +65,25 @@ func New(cfg config.Config, db *pgxpool.Pool, redis *redis.Client) *gin.Engine {
 	protected.GET("/customers", customers.Handler{DB: db}.List)
 	protected.GET("/invoices", invoices.Handler{DB: db}.List)
 	protected.GET("/suppliers", suppliers.Handler{Service: sup}.List)
+	sh := sales.Handler{Service: sales.Service{DB: db}}
+	protected.GET("/sales", sh.List)
+	protected.GET("/sales/:id", sh.Get)
+	protected.POST("/sales", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), sh.Save)
+	protected.PATCH("/sales/:id", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), sh.Save)
+	protected.POST("/sales/:id/complete", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), sh.Complete)
+	ph := purchaseorders.Handler{Service: purchaseorders.Service{DB: db}}
+	protected.GET("/purchase-orders", ph.List)
+	protected.GET("/purchase-orders/:id", ph.Get)
+	protected.POST("/purchase-orders", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ph.Save)
+	protected.PATCH("/purchase-orders/:id", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ph.Save)
+	protected.POST("/purchase-orders/:id/receipts", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ph.Receive)
+	protected.POST("/purchase-orders/:id/request-send", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ph.RequestSend)
+	protected.POST("/purchase-orders/:id/resolve-send", auth.RequireRole("OWNER", "ADMIN"), ph.ResolveSend)
+	protected.POST("/purchase-orders/:id/cancel", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ph.Cancel)
+	pay := payments.Handler{Service: payments.Service{DB: db}}
+	protected.GET("/payments", pay.List)
+	protected.POST("/payments", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), pay.Record)
+	protected.POST("/payments/:id/reverse", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), pay.Reverse)
 	protected.GET("/signals", signals.Handler{Repository: sr}.List)
 	protected.POST("/import", rateLimit(redis, "import", 10, time.Minute), auth.RequireRole("OWNER", "ADMIN", "MANAGER"), importer.Handler{Service: importer.Service{DB: db}}.Import)
 	protected.POST("/import/preview", rateLimit(redis, "import", 10, time.Minute), auth.RequireRole("OWNER", "ADMIN", "MANAGER"), importer.Handler{Service: importer.Service{DB: db}}.Preview)
@@ -66,7 +96,7 @@ func New(cfg config.Config, db *pgxpool.Pool, redis *redis.Client) *gin.Engine {
 	documents := importer.DocumentHandler{Service: importer.DocumentService{DB: db, Store: objectStore, AI: ai.NewClient(cfg.MimoBaseURL, cfg.MimoModel, cfg.MimoAPIKey, cfg.MimoTimeout)}}
 	protected.POST("/import/pdf/preview", rateLimit(redis, "import", 10, time.Minute), auth.RequireRole("OWNER", "ADMIN", "MANAGER"), documents.Preview)
 	protected.POST("/import/pdf/commit", rateLimit(redis, "import", 10, time.Minute), auth.RequireRole("OWNER", "ADMIN", "MANAGER"), documents.Commit)
-	ah := actions.Handler{DB: db}
+	ah := actions.Handler{DB: db, Mailer: purchaseorders.SMTPMailer{Host: cfg.SMTPHost, Port: cfg.SMTPPort, User: cfg.SMTPUser, Password: cfg.SMTPPassword, From: cfg.SMTPFrom}}
 	protected.GET("/actions", ah.List)
 	protected.POST("/actions/:id/approve", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ah.Decide(true))
 	protected.POST("/actions/:id/reject", auth.RequireRole("OWNER", "ADMIN", "MANAGER"), ah.Decide(false))
