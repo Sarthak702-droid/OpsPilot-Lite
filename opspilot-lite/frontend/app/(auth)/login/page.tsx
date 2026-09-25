@@ -48,6 +48,13 @@ export default function Login() {
                 <span>Create new account</span>
               </button>
             </SignUpButton>
+
+            <Link
+              href="/"
+              className="inline-flex items-center justify-center text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors pt-1"
+            >
+              ← Return to Enterprise Gateway
+            </Link>
           </div>
         )}
 

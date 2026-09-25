@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&display=swap");
 @import "tailwindcss";
 @import "@clerk/ui/themes/shadcn.css";
 :root { color-scheme: light; --background:#f7f8fa; --surface:#fff; --ink:#182230; --muted:#637083; --line:#e3e8ee; --brand:#145f55; --brand-dark:#0e4d45; }
