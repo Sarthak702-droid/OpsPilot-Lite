@@ -18,14 +18,31 @@ export function PDFReview() {
   const customers = useQuery({ queryKey: ["customers"], queryFn: async () => getCustomers(await token()), enabled: !!preview && review.document_type === "INVOICE" });
   const suppliers = useQuery({ queryKey: ["suppliers"], queryFn: async () => getSuppliers(await token()), enabled: !!preview && review.document_type === "PURCHASE_ORDER" });
 
+  function cleanAmount(val: string): string {
+    return val.replace(/[^0-9.]/g, "");
+  }
+
   const inspect = useMutation({
     mutationFn: async (next: File) => previewPDF(await token(), next),
-    onSuccess: result => { setPreview(result); setReview({ ...blank, ...result.extracted }); },
+    onSuccess: result => {
+      const extracted = result.extracted
+        ? {
+            ...result.extracted,
+            total_amount: cleanAmount(result.extracted.total_amount || ""),
+          }
+        : {};
+      setPreview(result);
+      setReview({ ...blank, ...extracted });
+    },
   });
   const save = useMutation({
     mutationFn: async () => {
       if (!file) throw new Error("Choose a PDF");
-      return commitPDF(await token(), file, review);
+      const cleanedReview = {
+        ...review,
+        total_amount: cleanAmount(review.total_amount),
+      };
+      return commitPDF(await token(), file, cleanedReview);
     },
     onSuccess: () => { queryClient.invalidateQueries(); setFile(null); setPreview(null); setReview(blank); },
   });
@@ -53,7 +70,20 @@ export function PDFReview() {
       <label>Counterparty name from document<input className="input" value={review.counterparty_name} onChange={e => update("counterparty_name", e.target.value)} /></label>
       {review.document_type === "INVOICE" && <label>Customer<select className="input" value={review.counterparty_id} onChange={e => update("counterparty_id", e.target.value)}><option value="">Select customer</option>{customers.data?.items.map(item => <option key={item.id} value={item.id}>{item.business_name || item.name}</option>)}</select></label>}
       {review.document_type === "PURCHASE_ORDER" && <label>Supplier<select className="input" value={review.counterparty_id} onChange={e => update("counterparty_id", e.target.value)}><option value="">Select supplier</option>{suppliers.data?.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
-      <label>Total amount<input className="input" inputMode="decimal" value={review.total_amount} onChange={e => update("total_amount", e.target.value)} /></label>
+      <label>
+        Total amount
+        <input
+          className="input"
+          inputMode="decimal"
+          value={review.total_amount}
+          onChange={e => update("total_amount", e.target.value)}
+          onBlur={e => update("total_amount", cleanAmount(e.target.value))}
+          placeholder="e.g. 120000"
+        />
+        <span style={{ fontSize: 11, color: "var(--muted)", display: "block", marginTop: 2 }}>
+          Numerical value only (e.g. 120000). Currency prefixes and commas are automatically stripped on save.
+        </span>
+      </label>
       <p style={{ color: "var(--muted)", fontSize: 12 }}>Saving creates an invoice or draft purchase order for the selected workspace. Quotations are stored as reviewed documents.</p>
       {save.isError && <p role="alert" style={{ color: "#a22b24" }}>{save.error.message}</p>}
       <button className="button primary" disabled={save.isPending || !review.document_number || !review.document_date || !review.total_amount || (review.document_type !== "QUOTATION" && !review.counterparty_id) || (review.document_type === "INVOICE" && !review.due_date)} onClick={() => save.mutate()}>{save.isPending ? "Saving…" : "Confirm and save document"}</button>

@@ -146,6 +146,7 @@ func (s DocumentService) Preview(ctx context.Context, data []byte) (DocumentPrev
 	if !oneOf(fields.DocumentType, "INVOICE", "PURCHASE_ORDER", "QUOTATION") || fields.DocumentNumber == "" || !strings.Contains(text, fields.DocumentNumber) {
 		return preview, nil
 	}
+	fields.TotalAmount = cleanAmount(fields.TotalAmount)
 	if fields.TotalAmount != "" && (!decimalAmount.MatchString(fields.TotalAmount) || !strings.Contains(strings.ReplaceAll(text, ",", ""), fields.TotalAmount)) {
 		return preview, nil
 	}
@@ -153,7 +154,20 @@ func (s DocumentService) Preview(ctx context.Context, data []byte) (DocumentPrev
 	preview.Extracted = &fields
 	return preview, nil
 }
-func (r DocumentReview) Validate() error {
+func cleanAmount(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, ",", "")
+	var b strings.Builder
+	for _, ch := range s {
+		if (ch >= '0' && ch <= '9') || ch == '.' {
+			b.WriteRune(ch)
+		}
+	}
+	return b.String()
+}
+
+func (r *DocumentReview) Validate() error {
+	r.TotalAmount = cleanAmount(r.TotalAmount)
 	if !oneOf(r.DocumentType, "INVOICE", "PURCHASE_ORDER", "QUOTATION") {
 		return errors.New("invalid document type")
 	}
@@ -183,6 +197,7 @@ func (s DocumentService) Commit(ctx context.Context, org, user uuid.UUID, ip, or
 	if s.Store == nil {
 		return uuid.Nil, errors.New("R2 storage is not configured")
 	}
+	review.TotalAmount = cleanAmount(review.TotalAmount)
 	if err := review.Validate(); err != nil {
 		return uuid.Nil, err
 	}

@@ -115,46 +115,47 @@ flowchart TD
 ## 📂 Repository Structure
 
 ```text
-opspilot-lite/
-├── backend/                       # Go 1.25 Gin REST API & Workers
-│   ├── cmd/
-│   │   ├── api/                   # Main HTTP API Server entrypoint
-│   │   ├── worker/                # Background risk signals worker
-│   │   └── seed/                  # Deterministic database seeder
-│   ├── internal/
-│   │   ├── actions/               # Maker-Checker governance & execution
-│   │   ├── ai/                    # SGLang client, prompt grounding & SSE
-│   │   ├── auth/                  # Clerk JWKS & RBAC middleware
-│   │   ├── customers/             # Customer ledger & receivables
-│   │   ├── dashboard/             # Aggregated operational KPIs
-│   │   ├── importer/              # CSV/XLSX & PDF Tesseract OCR service
-│   │   ├── inventory/             # Double-entry stock movements
-│   │   ├── invoices/              # Billing & invoice lifecycle
-│   │   ├── payments/              # Payment recording & atomic reversals
-│   │   ├── products/              # SKU catalog & reorder thresholds
-│   │   ├── purchaseorders/        # PO workflows, approvals & receipts
-│   │   ├── sales/                 # Sales orders & stock deduction
-│   │   ├── server/                # Gin engine configuration & routing
-│   │   ├── signals/               # Continuous risk signals evaluator
-│   │   └── suppliers/             # Supplier directory & lead-time analytics
-│   ├── migrations/                # Versioned SQL schema migrations
-│   └── tests/                     # Integration and mock tests
-├── frontend/                      # Next.js 16 App Router UI
-│   ├── app/                       # Next.js App Router (Layouts, Pages)
-│   ├── components/                # Reusable UI primitives & icons
-│   ├── features/                  # Domain-specific modules
-│   │   ├── actions/               # Maker-Checker action approval center
-│   │   ├── ai/                    # Ask OpsPilot copilot modal & streaming
-│   │   ├── dashboard/             # Executive KPI & telemetry ribbons
-│   │   ├── imports/               # Document upload & OCR verification
-│   │   ├── landing/               # Obsidian Telemetry landing page
-│   │   ├── signals/               # Operational risk signals stream
-│   │   └── ...                    # Customers, Invoices, Orders, etc.
-│   └── services/                  # Typed API clients & TanStack Query hooks
-├── infrastructure/                # Docker compose & SGLang deployment scripts
-├── scripts/                       # Development & seeding helper scripts
-├── Makefile                       # Developer command orchestrator
-└── README.md                      # Comprehensive project documentation
+.
+└── opspilot-lite/
+    ├── backend/                   # Go 1.25 Gin REST API & Workers
+    │   ├── cmd/
+    │   │   ├── api/               # Main HTTP API Server entrypoint
+    │   │   ├── worker/            # Background risk signals worker
+    │   │   └── seed/              # Deterministic database seeder
+    │   ├── internal/
+    │   │   ├── actions/           # Maker-Checker governance & execution
+    │   │   ├── ai/                # SGLang client, prompt grounding & SSE
+    │   │   ├── auth/              # Clerk JWKS & RBAC middleware
+    │   │   ├── customers/         # Customer ledger & receivables
+    │   │   ├── dashboard/         # Aggregated operational KPIs
+    │   │   ├── importer/          # CSV/XLSX & PDF Tesseract OCR service
+    │   │   ├── inventory/         # Double-entry stock movements
+    │   │   ├── invoices/          # Billing & invoice lifecycle
+    │   │   ├── payments/          # Payment recording & atomic reversals
+    │   │   ├── products/          # SKU catalog & reorder thresholds
+    │   │   ├── purchaseorders/    # PO workflows, approvals & receipts
+    │   │   ├── sales/             # Sales orders & stock deduction
+    │   │   ├── server/            # Gin engine configuration & routing
+    │   │   ├── signals/           # Continuous risk signals evaluator
+    │   │   └── suppliers/         # Supplier directory & lead-time analytics
+    │   ├── migrations/            # Versioned SQL schema migrations
+    │   └── tests/                 # Integration and mock tests
+    ├── frontend/                  # Next.js 16 App Router UI
+    │   ├── app/                   # Next.js App Router (Layouts, Pages)
+    │   ├── components/            # Reusable UI primitives & icons
+    │   ├── features/              # Domain-specific modules
+    │   │   ├── actions/           # Maker-Checker action approval center
+    │   │   ├── ai/                # Ask OpsPilot copilot modal & streaming
+    │   │   ├── dashboard/         # Executive KPI & telemetry ribbons
+    │   │   ├── imports/           # Document upload & OCR verification
+    │   │   ├── landing/           # Obsidian Telemetry landing page
+    │   │   ├── signals/           # Operational risk signals stream
+    │   │   └── ...                # Customers, Invoices, Orders, etc.
+    │   └── services/              # Typed API clients & TanStack Query hooks
+    ├── infrastructure/            # Docker compose & SGLang deployment scripts
+    ├── scripts/                   # Development & seeding helper scripts
+    ├── Makefile                   # Developer command orchestrator
+    └── README.md                  # Detailed module documentation
 ```
 
 ---
@@ -167,12 +168,16 @@ opspilot-lite/
 - **Docker & Docker Compose**: For PostgreSQL 16 & Redis 7
 - **Poppler & Tesseract** *(Optional, for OCR)*: `sudo apt install poppler-utils tesseract-ocr`
 
-### 1. Clone & Configure Environment
+### 1. Clone & Navigate
 
 ```bash
 git clone https://github.com/Sarthak702-droid/OpsPilot-Lite.git
-cd OpsPilot-Lite
+cd OpsPilot-Lite/opspilot-lite
+```
 
+### 2. Configure Environment
+
+```bash
 # Setup Backend Environment
 cp .env.example .env
 
@@ -180,7 +185,7 @@ cp .env.example .env
 cp frontend/.env.example frontend/.env.local
 ```
 
-### 2. Boot Infrastructure & Apply Migrations
+### 3. Boot Infrastructure & Apply Migrations
 
 ```bash
 # Start PostgreSQL (port 15432) and Redis (port 16379)
@@ -190,7 +195,7 @@ make db-up
 make migrate
 ```
 
-### 3. Install Dependencies & Launch Development Server
+### 4. Install Dependencies & Launch Development Server
 
 ```bash
 # Install frontend node modules
